@@ -40,6 +40,18 @@ namespace Oddmatics.Util.Collections
             get { return InternalDictionary.Keys; }
         }
 
+        /// <summary>
+        /// Gets or sets the
+        /// <see cref="ValidationPredicate{KeyValuePair{TKey, TValue}}"/> to use in
+        /// order to ensure that items are validated as they are added to the
+        /// collection.
+        /// </summary>
+        public ValidationPredicate<KeyValuePair<TKey, TValue>> ValidationPredicate
+        {
+            get;
+            set;
+        }
+
         /// <inheritdoc />
         public ICollection<TValue> Values
         {
@@ -99,6 +111,13 @@ namespace Oddmatics.Util.Collections
             get { return InternalDictionary[key]; }
             set
             {
+                if (InternalDictionary[key].Equals(value))
+                {
+                    return;
+                }
+
+                AssertValid(new KeyValuePair<TKey, TValue>(key, value));
+
                 InternalDictionary[key] = value;
                 IsChanged               = true;
             }
@@ -117,6 +136,8 @@ namespace Oddmatics.Util.Collections
             TValue value
         )
         {
+            AssertValid(new KeyValuePair<TKey, TValue>(key, value));
+
             InternalDictionary.Add(key, value);
             IsChanged = true;
         }
@@ -126,6 +147,8 @@ namespace Oddmatics.Util.Collections
             KeyValuePair<TKey, TValue> item
         )
         {
+            AssertValid(item);
+
             InternalDictionary.Add(item.Key, item.Value);
             IsChanged = true;
         }
@@ -223,6 +246,30 @@ namespace Oddmatics.Util.Collections
         )
         {
             return InternalDictionary.TryGetValue(key, out value);
+        }
+
+
+        /// <summary>
+        /// Asserts that the key/value pair being added is valid within the collection.
+        /// </summary>
+        /// <param name="keyValuePair">
+        /// The key/value pair.
+        /// </param>
+        private void AssertValid(
+            KeyValuePair<TKey, TValue> keyValuePair
+        )
+        {
+            string reason;
+
+            if (ValidationPredicate == null)
+            {
+                return;
+            }
+
+            if (!ValidationPredicate(keyValuePair, this, out reason))
+            {
+                throw new ValidationFailureException(keyValuePair, reason);
+            }
         }
     }
 }

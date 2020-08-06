@@ -32,6 +32,12 @@ namespace Oddmatics.Util.Collections
             get { return false; }
         }
 
+        /// <summary>
+        /// Gets or sets the <see cref="ValidationPredicate{T}"/> to use in order to
+        /// ensure that items are validated as they are added to the collection.
+        /// </summary>
+        public ValidationPredicate<T> ValidationPredicate { get; set; }
+
 
         /// <summary>
         /// The internal <see cref="List{T}"/> that is wrapped by this class.
@@ -91,6 +97,8 @@ namespace Oddmatics.Util.Collections
                     return;
                 }
 
+                AssertValid(value);
+
                 var oldItem = InternalList[index];
 
                 InternalList[index] = value;
@@ -119,6 +127,8 @@ namespace Oddmatics.Util.Collections
             T item
         )
         {
+            AssertValid(item);
+
             InternalList.Add(item);
             IsChanged = true;
 
@@ -194,6 +204,8 @@ namespace Oddmatics.Util.Collections
             T item
         )
         {
+            AssertValid(item);
+
             InternalList.Insert(index, item);
             IsChanged = true;
 
@@ -254,6 +266,30 @@ namespace Oddmatics.Util.Collections
                     index
                 )
             );
+        }
+
+
+        /// <summary>
+        /// Asserts that the item being added is valid within the collection.
+        /// </summary>
+        /// <param name="item">
+        /// The item.
+        /// </param>
+        private void AssertValid(
+            T item
+        )
+        {
+            string reason;
+
+            if (ValidationPredicate == null)
+            {
+                return;
+            }
+
+            if (!ValidationPredicate(item, this, out reason))
+            {
+                throw new ValidationFailureException(item, reason);
+            }
         }
     }
 }
