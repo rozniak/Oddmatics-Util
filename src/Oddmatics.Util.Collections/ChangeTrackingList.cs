@@ -40,6 +40,22 @@ namespace Oddmatics.Util.Collections
 
 
         /// <summary>
+        /// Occurs when the collection is cleared.
+        /// </summary>
+        public event EventHandler Cleared;
+
+        /// <summary>
+        /// Occurs when an item is added to the collection.
+        /// </summary>
+        public event ItemChangedEventHandler<T> ItemAdded;
+
+        /// <summary>
+        /// Occurs when an item is removed from the collection.
+        /// </summary>
+        public event ItemChangedEventHandler<T> ItemRemoved;
+
+
+        /// <summary>
         /// Initializes a new instance of the
         /// <see cref="ChangeTrackingList{T}"/> class.
         /// </summary>
@@ -70,8 +86,24 @@ namespace Oddmatics.Util.Collections
             get { return InternalList[index]; }
             set
             {
+                if (InternalList[index].Equals(value))
+                {
+                    return;
+                }
+
+                var oldItem = InternalList[index];
+
                 InternalList[index] = value;
                 IsChanged           = true;
+
+                ItemRemoved?.Invoke(
+                    this,
+                    new ItemChangedEventArgs<T>(oldItem, index)
+                );
+                ItemAdded?.Invoke(
+                    this,
+                    new ItemChangedEventArgs<T>(value, index)
+                );
             }
         }
 
@@ -89,6 +121,14 @@ namespace Oddmatics.Util.Collections
         {
             InternalList.Add(item);
             IsChanged = true;
+
+            ItemAdded?.Invoke(
+                this,
+                new ItemChangedEventArgs<T>(
+                    item,
+                    InternalList.Count - 1
+                )
+            );
         }
 
         /// <inheritdoc />
@@ -101,6 +141,8 @@ namespace Oddmatics.Util.Collections
 
             InternalList.Clear();
             IsChanged = true;
+
+            Cleared?.Invoke(this, EventArgs.Empty);
         }
 
         /// <inheritdoc />
@@ -154,6 +196,11 @@ namespace Oddmatics.Util.Collections
         {
             InternalList.Insert(index, item);
             IsChanged = true;
+
+            ItemAdded?.Invoke(
+                this,
+                new ItemChangedEventArgs<T>(item, index)
+            );
         }
 
         /// <inheritdoc />
@@ -161,11 +208,30 @@ namespace Oddmatics.Util.Collections
             T item
         )
         {
+            // Is the item present?
+            //
+            int itemIndex = InternalList.IndexOf(item);
+
+            if (itemIndex == -1)
+            {
+                return false;
+            }
+
+            // Remove the item
+            //
             bool res = InternalList.Remove(item);
 
             if (res)
             {
                 IsChanged = true;
+
+                ItemRemoved?.Invoke(
+                    this,
+                    new ItemChangedEventArgs<T>(
+                        item,
+                        itemIndex
+                    )
+                );
             }
 
             return res;
@@ -176,8 +242,18 @@ namespace Oddmatics.Util.Collections
             int index
         )
         {
+            var oldItem = InternalList[index];
+
             InternalList.RemoveAt(index);
             IsChanged = true;
+
+            ItemRemoved?.Invoke(
+                this,
+                new ItemChangedEventArgs<T>(
+                    oldItem,
+                    index
+                )
+            );
         }
     }
 }
